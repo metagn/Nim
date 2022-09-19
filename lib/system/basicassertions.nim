@@ -12,10 +12,17 @@ template assert*(cond: untyped, msg = "") =
   runnableExamples("--assertions:off"):
     assert 1 == 2 # no code generated, no failure here
   runnableExamples("-d:danger"): assert 1 == 2 # ditto
-  assertImpl(cond, msg, astToStr(cond), compileOption("assertions"))
+  when compileOption("assertions"):
+    when declared(assertImpl):
+      assertImpl(cond, msg)
+    else:
+      defaultAssertImpl(cond, msg, astToStr(cond))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to `assert <#assert.t,untyped,string>`_ but is always turned on regardless of `--assertions`.
   runnableExamples:
     doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
-  assertImpl(cond, msg, astToStr(cond), true)
+  when declared(assertImpl):
+    assertImpl(cond, msg)
+  else:
+    defaultAssertImpl(cond, msg, astToStr(cond))

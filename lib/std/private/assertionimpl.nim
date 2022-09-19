@@ -32,13 +32,12 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect, tags: [].}
   cast[Hide](raiseAssert)(msg)
 
-template assertImpl*(cond: bool, msg: string, expr: string, enabled: static[bool]) =
-  when enabled:
-    const
-      loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
-      ploc = $loc
-    bind instantiationInfo
-    mixin failedAssertImpl
-    {.line: loc.}:
-      if not cond:
-        failedAssertImpl(ploc & " `" & expr & "` " & msg)
+template defaultAssertImpl*(cond: bool, msg: string, expr: string) =
+  const
+    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+    ploc = $loc
+  bind instantiationInfo
+  mixin failedAssertImpl
+  {.line: loc.}:
+    if not cond:
+      failedAssertImpl(ploc & " `" & expr & "` " & msg)
