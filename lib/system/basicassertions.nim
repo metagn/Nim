@@ -5,6 +5,10 @@ template assert*(cond: untyped, msg = "") =
   ## that `AssertionDefect` is hidden from the effect system, so it doesn't
   ## produce `{.raises: [AssertionDefect].}`. This exception is only supposed
   ## to be caught by unit testing frameworks.
+  ## 
+  ## Behavior can be overriden by defining `assertImpl(cond, msg)` in scope.
+  ## This is useful for contexts like multithreading where the default
+  ## behavior may not be sufficient.
   ##
   ## No code will be generated for `assert` when passing `-d:danger` (implied by `--assertions:off`).
   ## See `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
