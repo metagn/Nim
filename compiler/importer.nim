@@ -211,23 +211,6 @@ proc importAllSymbols*(c: PContext, fromMod: PSym) =
     var exceptSet: IntSet
     importAllSymbolsExcept(c, fromMod, exceptSet)
 
-proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; importSet: var IntSet) =
-  if n.isNil: return
-  case n.kind
-  of nkExportStmt:
-    for a in n:
-      assert a.kind == nkSym
-      let s = a.sym
-      if s.kind == skModule:
-        importAllSymbolsExcept(c, s, exceptSet)
-      elif exceptSet.isNil or s.name.id notin exceptSet:
-        rawImportSymbol(c, s, fromMod, importSet)
-  of nkExportExceptStmt:
-    localError(c.config, n.info, "'export except' not implemented")
-  else:
-    for i in 0..n.safeLen-1:
-      importForwarded(c, n[i], exceptSet, fromMod, importSet)
-
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
