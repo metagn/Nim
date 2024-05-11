@@ -245,8 +245,10 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
       while candidate != nil:
         if candidate.kind in filter:
           result.add candidate
-          # Break here, because further symbols encountered would be shadowed
-          break outer
+          if candidate.kind != skModule:
+            # Break here, because further symbols encountered would be shadowed
+            # but module symbol should not beat out other symbols
+            break outer
         candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
