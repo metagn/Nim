@@ -144,7 +144,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if isSymChoice(result) and result.len == 1:
     # resolveSymChoice can leave 1 sym
     result = result[0]
-  if isSymChoice(result) and efAllowSymChoice notin flags:
+  if isSymChoice(result) and {efAllowSymChoice, efInTypeof} * flags == {}:
     var err = "ambiguous identifier: '" & result[0].sym.name.s &
       "' -- use one of the following:\n"
     for child in n:
