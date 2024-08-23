@@ -94,6 +94,7 @@ type
     warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnGenericsIgnoredInjection = "GenericsIgnoredInjection",
     warnStdPrefix = "StdPrefix"
+    warnAmbiguousTypeof = "AmbiguousTypeof",
     warnUser = "User",
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     # hints
@@ -200,6 +201,7 @@ const
     warnImplicitDefaultValue: "$1",
     warnGenericsIgnoredInjection: "$1",
     warnStdPrefix: "$1 needs the 'std' prefix",
+    warnAmbiguousTypeof: "$1",
     warnUser: "$1",
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     hintSuccess: "operation successful: $#",

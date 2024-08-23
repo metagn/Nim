@@ -144,15 +144,19 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if isSymChoice(result) and result.len == 1:
     # resolveSymChoice can leave 1 sym
     result = result[0]
-  if isSymChoice(result) and {efAllowSymChoice, efInTypeof} * flags == {}:
+  if isSymChoice(result) and efAllowSymChoice notin flags:
     var err = "ambiguous identifier: '" & result[0].sym.name.s &
       "' -- use one of the following:\n"
     for child in n:
       let candidate = child.sym
       err.add "  " & candidate.owner.name.s & "." & candidate.name.s
       err.add ": " & typeToString(candidate.typ) & "\n"
-    localError(c.config, n.info, err)
-    n.typ = errorType(c)
+    if efInTypeof in flags:
+      err.add("this expression will have the invalid type 'None' for typeof")
+      message(c.config, n.info, warnAmbiguousTypeof, err)
+    else:
+      localError(c.config, n.info, err)
+      n.typ = errorType(c)
     result = n
   if result.kind == nkSym:
     result = semSym(c, result, result.sym, flags)
