@@ -250,3 +250,23 @@ block: # `when` in static signature
   proc foo[T](): T = test()
   proc bar[T](x = foo[T]()): T = x
   doAssert bar[int]() == 123
+
+block: # issue #22494
+  type Sha2Context[bits: static[int]] = object
+  type sha256 = Sha2Context[256]
+  type HMAC[T] = object
+  type
+    MDigest[bits: static[int]] = object
+      when (bits div 8) mod 16 == 0:
+        data {.align: 16.}: array[bits div 8, byte]
+      else:
+        data: array[bits div 8, byte]
+
+  func hkdfExtract[T](ctx: var HMAC[T],
+                      prk: var MDigest[T.bits]
+                      ) = discard
+
+  func hkdf_mod_r(): bool =
+    var ctx: HMAC[sha256]
+    var prk: MDigest[sha256.bits]
+    ctx.hkdfExtract(prk)

@@ -269,7 +269,7 @@ proc hasValuelessStatics(n: PNode): bool =
     proc doThing(_: MyThing)
   ]#
   if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
-    n.typ == nil or n.typ.kind == tyStatic
+    n.typ == nil or n.typ.kind in {tyStatic, tyGenericParam, tyFromExpr}
   else:
     for x in n:
       if hasValuelessStatics(x):
@@ -308,7 +308,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       of nkElifBranch:
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
-        if not cond.hasValuelessStatics:
+        if not cl.allowMetaTypes or not cond.hasValuelessStatics:
           var e = cl.c.semConstExpr(cl.c, cond)
           if e.kind != nkIntLit:
             internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
