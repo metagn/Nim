@@ -393,6 +393,9 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfNoTypeInfo
+      # do not generate typeinfo for imported struct
+      # workaround for Atomic[T] on C++
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
