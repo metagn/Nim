@@ -52,9 +52,6 @@ template `..<`*(a, b: untyped): untyped =
   ##   ```
   a .. (when b is BackwardsIndex: succ(b) else: pred(b))
 
-template `[]`*(s: string; i: int): char = arrGet(s, i)
-template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
-
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
 
