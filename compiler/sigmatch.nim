@@ -120,7 +120,7 @@ proc initCandidateAux(ctx: PContext,
                       genericConverter: false, inheritancePenalty: -1
   )
 
-proc resetCandidate*(c: var TCandidate) {.inline.} =
+template resetCandidate(c: var TCandidate) =
   # keep context
   when true:
     c.exactMatches = 0
