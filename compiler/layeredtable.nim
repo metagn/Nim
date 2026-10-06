@@ -99,3 +99,6 @@ proc put(typeMap: var LayeredIdTable, key: ItemId, value: PType) {.inline.} =
 template put*(typeMap: var LayeredIdTable, key, value: PType) =
   ## binds `key` to `value` only in current layer
   put(typeMap, key.bindingId, value)
+
+proc clear*(typeMap: var LayeredIdTable) {.inline.} =
+  resetIdTable(typeMap.topLayer)

@@ -146,10 +146,14 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
-  var z: TCandidate # current candidate
+  var z = default(TCandidate) # current candidate
+  var candInit = false
   while true:
     determineType(c, sym)
-    z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
+    if candInit:
+      reuseCandidate(z, sym, initialBinding, scope, diagnosticsFlag)
+    else:
+      z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases

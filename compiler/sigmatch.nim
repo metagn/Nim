@@ -120,10 +120,43 @@ proc initCandidateAux(ctx: PContext,
                       genericConverter: false, inheritancePenalty: -1
   )
 
+proc resetCandidate*(c: var TCandidate) {.inline.} =
+  # keep context
+  c.exactMatches = 0
+  c.subtypeMatches = 0
+  c.iteratorPreference = 0
+  c.convMatches = 0
+  c.intConvMatches = 0
+  c.genericMatches = 0
+  c.state = csEmpty
+  c.firstMismatch = MismatchInfo()
+  c.callee = nil
+  c.call = nil
+  c.calleeScope = 0
+  c.calleeSym = nil
+  clear(c.bindings)
+  c.magic = mNone
+  c.baseTypeMatch = false
+  c.matchedErrorType = false
+  c.genericConverter = false
+  c.coerceDistincts = false
+  c.typedescMatched = false
+  c.isNoCall = false
+  c.inferredTypes.setLen(0)
+  c.diagnostics.setLen(0)
+  c.inheritancePenalty = -1
+  c.diagnosticsEnabled = false
+  c.newlyTypedOperands.setLen(0)
+  c.pendingGenericExpansions.setLen(0)
+
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
   result = initCandidateAux(ctx, callee)
   result.calleeSym = nil
   result.bindings = initLayeredTypeMap()
+
+proc reuseCandidate*(c: var TCandidate, callee: PType) =
+  resetCandidate(c)
+  c.callee = callee
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
@@ -247,34 +280,37 @@ proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
     elif copied:
       t.n.add(original.n[i])
 
-proc initCandidate*(ctx: PContext, callee: PSym,
-                    binding: PNode, calleeScope = -1,
-                    diagnosticsEnabled = false): TCandidate =
-  result = initCandidateAux(ctx, callee.typ)
-  result.calleeSym = callee
+proc useCandidate(c: var TCandidate, callee: PSym, binding: PNode, calleeScope: int, diagnosticsEnabled: bool) {.inline.} =
+  c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
-    result.calleeScope = cmpScopes(ctx, callee)
+    c.calleeScope = cmpScopes(c.c, callee)
   else:
-    result.calleeScope = calleeScope
-  result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
-  result.diagnosticsEnabled = diagnosticsEnabled
-  result.magic = result.calleeSym.magic
-  result.bindings = initLayeredTypeMap()
+    c.calleeScope = calleeScope
+  c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
+  c.diagnosticsEnabled = diagnosticsEnabled
+  c.magic = c.calleeSym.magic
+  c.bindings = initLayeredTypeMap()
   if binding != nil and callee.kind in routineKinds:
-    matchGenericParams(result, binding, callee)
-    let genericMatch = result.state
+    matchGenericParams(c, binding, callee)
+    let genericMatch = c.state
     if genericMatch != csNoMatch:
-      result.state = csEmpty
+      c.state = csEmpty
       if genericMatch == csMatch: # csEmpty if not fully instantiated
         # instantiate the type, emulates old compiler behavior
         # wouldn't be needed if sigmatch could handle complex cases,
         # examples are in texplicitgenerics
         # might be buggy, see rest of generateInstance if problems occur
-        let typ = ctx.instantiateOnlyProcType(ctx, result.bindings, callee, binding.info)
-        result.callee = typ
+        let typ = c.c.instantiateOnlyProcType(c.c, c.bindings, callee, binding.info)
+        c.callee = typ
       else:
         # createThread[void] requires this if the above branch is removed:
-        copyingEraseVoidParams(result, result.callee)
+        copyingEraseVoidParams(c, c.callee)
+
+proc initCandidate*(ctx: PContext, callee: PSym,
+                    binding: PNode, calleeScope = -1,
+                    diagnosticsEnabled = false): TCandidate =
+  result = initCandidateAux(ctx, callee.typ)
+  useCandidate(result, callee, binding, calleeScope, diagnosticsEnabled)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
@@ -282,6 +318,13 @@ proc newCandidate*(ctx: PContext, callee: PSym,
 
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
   result = initCandidate(ctx, callee)
+
+proc reuseCandidate*(c: var TCandidate, callee: PSym,
+                     binding: PNode, calleeScope = -1,
+                     diagnosticsEnabled = false) =
+  resetCandidate(c)
+  c.callee = callee.typ
+  useCandidate(c, callee, binding, calleeScope, diagnosticsEnabled)
 
 proc shallowCopyCandidate(dest: var TCandidate, src: TCandidate) =
   dest.c = src.c
@@ -303,10 +346,11 @@ proc checkGeneric(a, b: TCandidate): int =
   let bb = b.callee
   var winner = 0
   for aai, bbi in underspecifiedPairs(aa, bb, 1):
-    var ma = newCandidate(c, bbi)
-    let tra = typeRel(ma, bbi, aai, {trDontBind, trCheckGeneric})
-    var mb = newCandidate(c, aai)
-    let trb = typeRel(mb, aai, bbi, {trDontBind, trCheckGeneric})
+    var m = newCandidate(c, bbi)
+    let tra = typeRel(m, bbi, aai, {trDontBind, trCheckGeneric})
+    #var mb = newCandidate(c, aai)
+    reuseCandidate(m, aai)
+    let trb = typeRel(m, aai, bbi, {trDontBind, trCheckGeneric})
     if tra == isGeneric and trb in {isNone, isInferred, isInferredConvertible}:
       if winner == -1: return 0
       winner = 1
@@ -2366,10 +2410,10 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # bug #26349: allocating a fresh candidate (and its binding table) for
     # every converter is expensive. Only the bindings of `convMatch` are used
     # after a match, so reuse it if the previous failed match left it empty:
-    if i == 0 or convMatch.bindings.currentLen != 0 or convMatch.state != csEmpty:
+    if i == 0:# or convMatch.bindings.currentLen != 0 or convMatch.state != csEmpty:
       convMatch = newCandidate(c, src)
     else:
-      convMatch.callee = src
+      reuseCandidate(convMatch, src)
     let srca = typeRel(convMatch, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
