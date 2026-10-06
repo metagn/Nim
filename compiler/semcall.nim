@@ -154,6 +154,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       reuseCandidate(z, sym, initialBinding, scope, diagnosticsFlag)
     else:
       z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
+      candInit = true
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases

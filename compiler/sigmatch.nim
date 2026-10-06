@@ -122,32 +122,38 @@ proc initCandidateAux(ctx: PContext,
 
 proc resetCandidate*(c: var TCandidate) {.inline.} =
   # keep context
-  c.exactMatches = 0
-  c.subtypeMatches = 0
-  c.iteratorPreference = 0
-  c.convMatches = 0
-  c.intConvMatches = 0
-  c.genericMatches = 0
-  c.state = csEmpty
-  c.firstMismatch = MismatchInfo()
-  c.callee = nil
-  c.call = nil
-  c.calleeScope = 0
-  c.calleeSym = nil
-  clear(c.bindings)
-  c.magic = mNone
-  c.baseTypeMatch = false
-  c.matchedErrorType = false
-  c.genericConverter = false
-  c.coerceDistincts = false
-  c.typedescMatched = false
-  c.isNoCall = false
-  c.inferredTypes.setLen(0)
-  c.diagnostics.setLen(0)
-  c.inheritancePenalty = -1
-  c.diagnosticsEnabled = false
-  c.newlyTypedOperands.setLen(0)
-  c.pendingGenericExpansions.setLen(0)
+  when true:
+    c.exactMatches = 0
+    c.subtypeMatches = 0
+    c.iteratorPreference = 0
+    c.convMatches = 0
+    c.intConvMatches = 0
+    c.genericMatches = 0
+    c.state = csEmpty
+    c.firstMismatch = MismatchInfo()
+    c.callee = nil
+    c.call = nil
+    c.calleeScope = 0
+    c.calleeSym = nil
+    clear(c.bindings)
+    c.magic = mNone
+    c.baseTypeMatch = false
+    c.matchedErrorType = false
+    c.genericConverter = false
+    c.coerceDistincts = false
+    c.typedescMatched = false
+    c.isNoCall = false
+    c.inferredTypes.setLen(0)
+    c.diagnostics.setLen(0)
+    c.inheritancePenalty = -1
+    c.diagnosticsEnabled = false
+    c.newlyTypedOperands.setLen(0)
+    c.pendingGenericExpansions.setLen(0)
+  else:
+    let bindings = ensureMove(c.bindings)
+    c = initCandidateAux(c.c, nil)
+    c.bindings = ensureMove(bindings)
+    clear(c.bindings)
 
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
   result = initCandidateAux(ctx, callee)
@@ -286,10 +292,8 @@ proc useCandidate(c: var TCandidate, callee: PSym, binding: PNode, calleeScope: 
     c.calleeScope = cmpScopes(c.c, callee)
   else:
     c.calleeScope = calleeScope
-  c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
   c.diagnosticsEnabled = diagnosticsEnabled
   c.magic = c.calleeSym.magic
-  c.bindings = initLayeredTypeMap()
   if binding != nil and callee.kind in routineKinds:
     matchGenericParams(c, binding, callee)
     let genericMatch = c.state
@@ -310,6 +314,8 @@ proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false): TCandidate =
   result = initCandidateAux(ctx, callee.typ)
+  result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
+  result.bindings = initLayeredTypeMap()
   useCandidate(result, callee, binding, calleeScope, diagnosticsEnabled)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
