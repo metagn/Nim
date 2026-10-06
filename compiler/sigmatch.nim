@@ -2416,10 +2416,11 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # bug #26349: allocating a fresh candidate (and its binding table) for
     # every converter is expensive. Only the bindings of `convMatch` are used
     # after a match, so reuse it if the previous failed match left it empty:
-    if i == 0:# or convMatch.bindings.currentLen != 0 or convMatch.state != csEmpty:
+    if i == 0 or convMatch.bindings.currentLen != 0 or convMatch.state != csEmpty:
       convMatch = newCandidate(c, src)
     else:
-      reuseCandidate(convMatch, src)
+      convMatch.callee = src
+      #reuseCandidate(convMatch, src)
     let srca = typeRel(convMatch, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
